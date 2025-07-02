@@ -38,13 +38,13 @@ Plots = "1"
 ProgressMeter = "1"
 Reexport = "1"
 Revise = "3"
-Sleipnir = "0.9.7"
+Sleipnir = "0.9.7, 0.10"
 Tullio = "0.3"
 julia = "1.10"
 
 [extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test", "ForwardDiff"]
