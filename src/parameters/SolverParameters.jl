@@ -14,8 +14,9 @@ A mutable struct that holds parameters for the solver.
 - `progress::Bool`: Flag indicating whether to show progress during the solving process.
 - `progress_steps::I`: The number of steps between progress updates.
 - `maxiters::I`: Maximum number of iterations to perform in the iceflow solver.
+- `save_func(simulation, t)`: Function which returns quantities of interest that shall be saved. Note that this should allocate the output (not as a view to some cache).
 """
-mutable struct SolverParameters{F <: AbstractFloat, I <: Integer} <: AbstractParameters
+mutable struct SolverParameters{F <: AbstractFloat, I <: Integer, S} <: AbstractParameters
     solver::OrdinaryDiffEq.OrdinaryDiffEqAdaptiveAlgorithm
     reltol::F
     step::F
@@ -24,6 +25,7 @@ mutable struct SolverParameters{F <: AbstractFloat, I <: Integer} <: AbstractPar
     progress::Bool
     progress_steps::I
     maxiters::I
+    save_func::S
 end
 
 """
@@ -37,6 +39,7 @@ Constructs a `SolverParameters` object with the specified parameters or using de
                       progress::Bool = true,
                       progress_steps::I = 10,
                       maxiters::I = Int(1e5),
+                      save_func = nothing
                     ) where {F <: AbstractFloat, I <: Integer}
 
 # Arguments
@@ -48,6 +51,7 @@ Constructs a `SolverParameters` object with the specified parameters or using de
 - `progress::Bool`: Whether to show progress during the solving process. Defaults to `true`.
 - `progress_steps::I`: The number of steps between progress updates. Defaults to `10`.
 - `maxiters::I`: Maximum number of iterations to perform in the iceflow solver. Defaults to `1e5`.
+- `save_func(simulation, t)`: Function which returns quantities of interest that shall be saved. Note that this should allocate the output (not as a view to some cache).
 
 # Returns
 - `solver_parameters`: A `SolverParameters` object constructed with the specified parameters.
@@ -61,6 +65,7 @@ function SolverParameters(;
             progress::Bool = true,
             progress_steps::I = 10,
             maxiters::I = Int(1e5),
+            save_func = nothing,
             ) where {F <: AbstractFloat, I <: Integer}
     # Build the solver parameters based on input values
     if !isnothing(tstops)
@@ -75,6 +80,7 @@ function SolverParameters(;
         progress,
         Sleipnir.Int(progress_steps),
         Sleipnir.Int(maxiters),
+        save_func,
     )
 
     return solver_parameters

@@ -1,3 +1,5 @@
+using DiffEqCallbacks: SavingCallback, SavedValues
+
 export run₀, run!, generate_ground_truth, apply_MB_mask!
 
 """
@@ -14,6 +16,27 @@ function run!(simulation::Prediction)
 
     @everywhere GC.gc() # run garbage collector
 
+end
+
+build_saving_callback(::Nothing, simulation) = (saving_cb = CallbackSet(), saved_values = nothing)
+
+function build_saving_callback(save_func, simulation)
+    F = Sleipnir.Float
+
+    if isnothing(simulation.cache)
+        throw(error("build_saving_callback should be called after cache is initialized"))
+    end
+
+    S = typeof(save_func(simulation, zero(F)))
+
+    _save_func = let save_func = save_func
+        _save_func(u, t, integrator) = save_func(integrator.p, t)
+    end
+
+    saved_values = SavedValues(F, S)
+    saving_cb = SavingCallback(_save_func, saved_values)
+
+    return (;saving_cb, saved_values)
 end
 
 """
@@ -89,12 +112,16 @@ function simulate_iceflow_PDE!(
     cache = simulation.cache
     params = simulation.parameters
 
+    (;saving_cb, saved_values) = build_saving_callback(params.solver.save_func, simulation)
+
+    cb_with_saving = CallbackSet(cb, saving_cb)
+
     # Define problem to be solved
     iceflow_prob = ODEProblem{true,SciMLBase.FullSpecialize}(du, cache.iceflow.H, params.simulation.tspan, simulation; tstops=params.solver.tstops)
 
     iceflow_sol = solve(iceflow_prob,
                         params.solver.solver,
-                        callback=cb,
+                        callback=cb_with_saving,
                         reltol=params.solver.reltol,
                         save_everystep=params.solver.save_everystep,
                         progress=params.solver.progress,
@@ -117,7 +144,7 @@ function simulate_iceflow_PDE!(
     @. cache.iceflow.S = glacier.B + cache.iceflow.H
 
     # Update simulation results
-    results = Sleipnir.create_results(simulation, glacier_idx, iceflow_sol, nothing; light=!params.solver.save_everystep, processVelocity=V_from_H)
+    results = Sleipnir.create_results(simulation, glacier_idx, iceflow_sol, nothing; light=!params.solver.save_everystep, processVelocity=V_from_H, saved_values)
 
     return results
 end
